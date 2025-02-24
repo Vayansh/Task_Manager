@@ -36,6 +36,8 @@ class _MyHomePageState extends State<MyHomePage> {
   Future<void> _addTask() async{
     TextEditingController titleController = TextEditingController();
     TextEditingController descriptionController = TextEditingController();
+    List<DateTime> selectedReminders = [];
+
     showDialog(
       context: context, 
       builder: (context)=> AlertDialog(
@@ -50,6 +52,52 @@ class _MyHomePageState extends State<MyHomePage> {
               TextField(
                 controller:descriptionController,
                                   decoration: InputDecoration(hintText: "Enter task description")),
+              SizedBox(height: 15,),
+              ...selectedReminders.map((reminder) => ListTile(
+                title: Text(reminder.toString()),
+                trailing: IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () {
+                    setState(() {
+                      selectedReminders.remove(reminder);
+                    });
+                  },
+                ),
+              )),
+              SizedBox(height: 15,),
+              ElevatedButton(
+              onPressed: () async {
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2100),
+                );
+
+                if (pickedDate != null) {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+
+                  if (pickedTime != null) {
+                    DateTime finalDateTime = DateTime(
+                      pickedDate.year,
+                      pickedDate.month,
+                      pickedDate.day,
+                      pickedTime.hour,
+                      pickedTime.minute,
+                    );
+
+                    setState(() {
+                      selectedReminders.add(finalDateTime);
+                    });
+                  }
+                }
+              },
+              child: Text("Add Reminder"),
+            ),
+
           ],
         ),
         
@@ -58,7 +106,9 @@ class _MyHomePageState extends State<MyHomePage> {
           TextButton(
             onPressed:() async {
               if(titleController.text.isNotEmpty){
-                await DatabaseHelper().insertTask(titleController.text, descriptionController.text);
+                int id = await DatabaseHelper().insertTask(titleController.text, descriptionController.text);
+                await DatabaseHelper().insertReminders(id, titleController.text, descriptionController.text, selectedReminders);
+  
                 Navigator.pop(context);
                 _loadTasks();
               }
@@ -72,9 +122,13 @@ class _MyHomePageState extends State<MyHomePage> {
 
   Future<void> _updateTask(int id) async {
     Map<String, dynamic>? task = await DatabaseHelper().getTask(id);
+    List<Map<String, dynamic>> reminders = await DatabaseHelper().getReminders(id);
+
     TextEditingController titleController = TextEditingController(text: task==null?'':task['title']);
     TextEditingController descriptionController = TextEditingController(text: task==null?'':task['description']);
-    
+
+    List<Map<String, dynamic>> selectedReminders = List.from(reminders);
+
     showDialog(
       context: context, 
       builder: (context)=> AlertDialog(
@@ -89,6 +143,53 @@ class _MyHomePageState extends State<MyHomePage> {
               TextField(
                 controller:descriptionController,
                                   decoration: InputDecoration(hintText: "Update task description")),
+              SizedBox(height: 15,),
+              ...selectedReminders.map((reminder) =>ListTile(
+                title: Text(reminder.toString()),
+                trailing: IconButton(
+                  icon: Icon(Icons.delete, color: Colors.red),
+                  onPressed: () async{
+                    await DatabaseHelper().deleteReminder(reminder['id']);
+                    setState(() {
+                      selectedReminders.remove(reminder);
+                    });
+                  },
+                ),
+              )),
+              SizedBox(height: 15,),
+              ElevatedButton(
+              onPressed: () async {
+                DateTime? pickedDate = await showDatePicker(
+                  context: context,
+                  initialDate: DateTime.now(),
+                  firstDate: DateTime.now(),
+                  lastDate: DateTime(2100),
+                );
+
+                if (pickedDate != null) {
+                  TimeOfDay? pickedTime = await showTimePicker(
+                    context: context,
+                    initialTime: TimeOfDay.now(),
+                  );
+
+                  if (pickedTime != null) {
+                    DateTime finalDateTime = DateTime(
+                      pickedDate.year,
+                      pickedDate.month,
+                      pickedDate.day,
+                      pickedTime.hour,
+                      pickedTime.minute,
+                    );
+
+                    setState(() {
+                      selectedReminders.add({'id': null, 'reminder_time': finalDateTime.toIso8601String()});
+                    });
+                  }
+                }
+              },
+              child: Text("Add Reminder"),
+            ),
+
           ],
         ),
         
@@ -101,6 +202,11 @@ class _MyHomePageState extends State<MyHomePage> {
               }
               if(descriptionController.text.isNotEmpty){
                 await DatabaseHelper().updateDescription(id, descriptionController.text);
+              }
+              for (var reminder in selectedReminders) {
+                if (reminder['id'] == null) {
+                  await DatabaseHelper().insertReminder(id, DateTime.parse(reminder['reminder_time']));
+                }
               }
               Navigator.pop(context);
               _loadTasks();
