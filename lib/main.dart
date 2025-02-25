@@ -1,33 +1,14 @@
 import 'package:flutter/material.dart';
 import 'screens/home_page.dart';
 import './notification_service.dart';
-import 'package:workmanager/workmanager.dart';
-import 'task_service.dart';
+// import 'database_helper.dart';
 
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await NotificationService.init();
-    await TaskService.checkAndSendNotifications();
-    return Future.value(true);
-  });
-}
 
-void scheduleBackgroundTask() {
-  Workmanager().registerPeriodicTask(
-    "task_check",
-    "checkForReminders",
-    frequency: Duration(minutes: 15), // Runs every 15 minutes
-    existingWorkPolicy: ExistingWorkPolicy.replace, // Ensures only one task runs
-  );
-}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await NotificationService.init();
-  await Workmanager().initialize(callbackDispatcher, isInDebugMode: true);
-  
-  scheduleBackgroundTask();
+  // await DatabaseHelper().dropDatabase();
 
   runApp(const MyApp());
 }

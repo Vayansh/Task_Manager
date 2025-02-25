@@ -29,7 +29,7 @@ class DatabaseHelper {
   Future<void> _createTables(Database db) async {
     await db.execute(
      '''CREATE TABLE tasks(
-      id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description Text isCompleted INTEGER
+      id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description Text, isCompleted INTEGER
       )''');
 
     await db.execute(
@@ -80,7 +80,7 @@ class DatabaseHelper {
       int id = await db.insert('reminders', {
                                       'task_id': taskId, 
                                       'reminder_time':reminder.toIso8601String(),
-                                      'idNotified':0
+                                      'isNotified':0
                                       }
                     );
       await NotificationService.scheduleNotification(
@@ -163,6 +163,12 @@ class DatabaseHelper {
     }
     
     return await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
+  }
+  Future<int> dropDatabase() async {
+    String path = join(await getDatabasesPath(), 'tasks.db');
+    await deleteDatabase(path); // Deletes the entire database file
+    _database = null; // Reset database instance
+    return 1; // Return success code
   }
 
 
